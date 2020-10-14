@@ -191,7 +191,7 @@ plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm
 
 runAll<-function(file){
   outFile<-sprintf('%s/screening_%s',dirname(file),sub('.xlsx?','',basename(file)))
-  isQS6<-grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel('dat/2020-10-13_trial_BeaconSAPv2_group5_QS6run_20201014 082520.xlsx','Raw Data',n_max=6))[6,2])
+  isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])
   lamp<-readXls(file,isQS6=isQS6)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
   amps<-calcAmps2(lamp)
