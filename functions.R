@@ -11,8 +11,12 @@ readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,sk
   if(is.numeric(meltFile)|is.null(meltFile)){
     ts<-meltFile
   }else{
-    if(grepl('.xlsx?$',meltFile))tmp<-as.data.frame(readxl::read_excel(meltFile,meltRawTab,skip=skip))
-    else tmp<-read.csv(meltFile,stringsAsFactors=FALSE,skip=skip)
+    if(grepl('.xlsx?$',meltFile)){
+      if(meltRawTab %in% readxl::excel_sheets(meltFile)) tmp<-as.data.frame(readxl::read_excel(meltFile,meltRawTab,skip=skip))
+      else tmp<-data.frame('Temperature'=NA)[0,,drop=FALSE]
+    }else{
+      tmp<-read.csv(meltFile,stringsAsFactors=FALSE,skip=skip)
+    }
     colnames(tmp)<-sub('[ -]','.',colnames(tmp))
     ts<-unique(tmp[tmp$Well.Position=='A1','Temperature'])
   }
@@ -22,6 +26,7 @@ readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,sk
   melt$row<-trimws(sub('[0-9]+','',melt$Well.Position))
   melt$rowNum<-sapply(melt$row,function(xx)which(LETTERS==xx))
   melt$well<-trimws(melt$Well.Position)
+  melt$file<-rawFile
   #assumes in correct order
   if(correctCycles)melt$Cycle<-ave(melt$Cycle,melt$Well.Position,FUN=function(xx)1:length(xx))
   melt$Cycle<-melt$Cycle-skipCycles
@@ -113,9 +118,9 @@ checkAmps<-function(lamp,melt,fl,minAmp=2500,meltTempNum=35,meltTempNum2=length(
     fl2<-tapply(melt[melt$temp==melt$t2,fl],melt[melt$temp==melt$t1,'Well'],c)
   }else{
     fl1<-dnar::withAs(xx=melt[order(melt$Well,melt$temp),],tapply(xx[,fl],xx$Well,function(zz)zz[meltTempNum]))
-    fl2<-dnar::withAs(xx=melt[order(melt$Well,melt$temp),],tapply(xx[,fl],xx$Well,function(zz)max(minAmp,zz[meltTempNum2]*minMeltDiff)))
+    fl2<-dnar::withAs(xx=melt[order(melt$Well,melt$temp),],tapply(xx[,fl],xx$Well,function(zz)zz[meltTempNum2]))
   }
-  curveMelt<-fl1>fl2
+  curveMelt<-fl1>max(minAmp,fl2*minMeltDiff)
   lampAmp<-dnar::withAs(xx=lamp[order(lamp$Well,lamp$time),],tapply(xx[,fl],list(xx$Well),function(zz)tail(zz,1)>max(minAmp,zz[baselineTime]*minFoldIncrease)))
   out<-data.frame('amp'=lampAmp,'melt'=curveMelt[names(lampAmp)],'last'=last[names(lampAmp)],'first'=first[names(lampAmp)],row.names=names(lampAmp))
   out$isGood<-out$melt&out$amp
@@ -123,7 +128,7 @@ checkAmps<-function(lamp,melt,fl,minAmp=2500,meltTempNum=35,meltTempNum2=length(
 }
 
 
-readXls<-function(xls,isQS6=FALSE){
+readXls<-function(xls,isQS6=FALSE,extraTemps=c()){
   if(dir.exists(xls)){
     file1<-list.files(xls,'_Raw Data_',full.names=TRUE)
     file2<-list.files(xls,'_Melt Curve Raw_',full.names=TRUE)
@@ -134,7 +139,7 @@ readXls<-function(xls,isQS6=FALSE){
     rownames(info)<-info[,'Well.Position']
   }else if(isQS6){
     lamp<-readLamp(xls,xls,201,skipCycles=0,skip=23,correctCycles=TRUE,meltRawTab='Melt Curve Raw')
-    info<-unique(as.data.frame(readxl::read_excel(xls,'Melt Curve Result',skip=23))[,c('Well Position','Sample')])
+    info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=23))[,c('Well Position','Sample')])
     info[,'Sample Name']<-trimws(info$Sample)
     rownames(info)<-info[,'Well Position']
   }else{
@@ -142,7 +147,11 @@ readXls<-function(xls,isQS6=FALSE){
     info<-unique(as.data.frame(readxl::read_excel(xls,'Sample Setup',skip=47))[,c('Well Position','Sample Name')])
     rownames(info)<-info[,'Well Position']
   }
-  lamp<-lapply(lamp[1:2],function(xx){xx$target<-info[xx$well,'Sample Name'];xx$dummy<-1;return(xx[order(xx$target),])})
+  lamp<-lapply(lamp[sapply(lamp,function(xx)!is.null(xx)&&nrow(xx)>0)],function(xx){if(is.null(xx))return(xx);xx$target<-info[xx$well,'Sample Name'];xx$dummy<-1;return(xx[order(xx$target),])})
+  if(!is.null(extraTemps)){
+    lamp$extra$temp<-extraTemps[lamp$extra$Cycle-200]
+    if(is.null(lamp$melt))lamp$melt<-lamp$extra
+  }
   lamp<-lapply(lamp,function(xx){xx[!is.na(xx$target),]})
   lamp
 }
@@ -164,9 +173,9 @@ calcAmps<-function(lamp){
 }
 calcAmps2<-function(lamp){
   amped<-cbind(
-    'nm587'=checkAmps(lamp$lamp,lamp$melt,'587nm',minFoldIncrease=1.5,meltTempNum=25,meltTempNum2=85,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE),
-    'nm682'=checkAmps(lamp$lamp,lamp$melt,'682nm',minFoldIncrease=4,meltTempNum=63,meltTempNum2=75,minMeltDiff=1.2,minAmp=10000,baselineTime=4,isTemp=TRUE),
-    'nm520'=checkAmps(lamp$lamp,lamp$melt,'520nm',minFoldIncrease=2,minAmp=20000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
+    'nm587'=checkAmps(lamp$lamp,lamp$melt,'587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=85,minMeltDiff=2,baselineTime=4,isTemp=TRUE),
+    'nm682'=checkAmps(lamp$lamp,lamp$melt,'682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=75,minMeltDiff=2,minAmp=100000,baselineTime=4,isTemp=TRUE),
+    'nm520'=checkAmps(lamp$lamp,lamp$melt,'520nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
   )
   amped$target<-sapply(rownames(amped),function(xx)lamp$lamp$target[lamp$lamp$Well==xx][1])
   pos<-data.frame(
@@ -176,7 +185,7 @@ calcAmps2<-function(lamp){
   )
   return(list('amped'=amped,'pos'=pos))
 }
-plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=TRUE){
+plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt)){
   nPlot<-length(primers)*ifelse(plotMelts,2,1)
   nCol<-length(unique(lamp$lamp$target))
   sameY<-TRUE
@@ -189,10 +198,12 @@ plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm
   }
 }
 
-runAll<-function(file){
-  outFile<-sprintf('%s/screening_%s',dirname(file),sub('.xlsx?','',basename(file)))
+runAll<-function(file,outDir=dirname(file)){
+  outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])
-  lamp<-readXls(file,isQS6=isQS6)
+  if(!'Melt Curve Raw' %in% readxl::excel_sheets(file))extraTemps<-c(95,78,72,62,25)
+  else extraTemps<-c()
+  lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
   amps<-calcAmps2(lamp)
   pdf(sprintf('%s.pdf',outFile),width=1.4*length(unique(lamp$lamp$target)),height=10)
