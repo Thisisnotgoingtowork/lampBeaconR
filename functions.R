@@ -134,19 +134,19 @@ readXls<-function(xls,isQS6=FALSE,extraTemps=c()){
     file1<-list.files(xls,'_Raw Data_',full.names=TRUE)
     file2<-list.files(xls,'_Melt Curve Raw_',full.names=TRUE)
     file3<-list.files(xls,'_Melt Curve Result',full.names=TRUE)
-    lamp<-readLamp(file1,file2,201,skipCycles=0,skip=23,correctCycles=TRUE)
+    lamp<-readLamp(file1,file2,201,skip=23,correctCycles=TRUE)
     info<-unique(read.csv(file3,stringsAsFactors=FALSE,skip=23)[,c('Well.Position','Sample')])
     info[,'Sample Name']<-trimws(info$Sample)
     rownames(info)<-info[,'Well.Position']
   }else if(isQS6){
     nSkip<-findWellLine(xls)-1
-    lamp<-readLamp(xls,xls,201,skipCycles=0,skip=nSkip,correctCycles=TRUE,meltRawTab='Melt Curve Raw')
+    lamp<-readLamp(xls,xls,201,skip=nSkip,correctCycles=TRUE,meltRawTab='Melt Curve Raw')
     info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=nSkip))[,c('Well Position','Sample')])
     info[,'Sample Name']<-trimws(info$Sample)
     rownames(info)<-info[,'Well Position']
   }else{
     nSkip<-findWellLine(xls)-1
-    lamp<-readLamp(xls,xls,201,skipCycles=0,skip=nSkip,meltRawTab='Melt Curve Raw Data')
+    lamp<-readLamp(xls,xls,201,skip=nSkip,meltRawTab='Melt Curve Raw Data')
     info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=nSkip))[,c('Well Position','Sample Name')])
     rownames(info)<-info[,'Well Position']
   }
@@ -176,7 +176,7 @@ calcAmps<-function(lamp){
 }
 calcAmps2<-function(lamp){
   amped<-cbind(
-    'nm587'=checkAmps(lamp$lamp,lamp$melt,'587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=85,minMeltDiff=2,baselineTime=4,isTemp=TRUE),
+    'nm587'=checkAmps(lamp$lamp,lamp$melt,'587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=85,minMeltDiff=2,minAmp=20000,baselineTime=4,isTemp=TRUE),
     'nm682'=checkAmps(lamp$lamp,lamp$melt,'682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=75,minMeltDiff=2,minAmp=100000,baselineTime=4,isTemp=TRUE),
     'nm520'=checkAmps(lamp$lamp,lamp$melt,'520nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
   )
@@ -206,7 +206,7 @@ plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm
 runAll<-function(file,outDir=dirname(file)){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
-  if(!'Melt Curve Raw' %in% readxl::excel_sheets(file))extraTemps<-c(95,78,72,62,25)
+  if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
   else extraTemps<-c()
   lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
