@@ -216,4 +216,5 @@ runAll<-function(file,outDir=dirname(file)){
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
   print(amps$pos[apply(amps$pos[,-1],1,sum)>0,])
+  invisible(list('lamp'=lamp,'amp'=amps))
 }
