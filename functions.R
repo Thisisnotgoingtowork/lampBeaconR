@@ -183,6 +183,7 @@ calcAmps2<-function(lamp){
   amped$target<-sapply(rownames(amped),function(xx)lamp$lamp$target[lamp$lamp$Well==xx][1])
   amped$row<-sapply(rownames(amped),function(xx)lamp$lamp$row[lamp$lamp$Well==xx][1])
   amped$col<-sapply(rownames(amped),function(xx)lamp$lamp$col[lamp$lamp$Well==xx][1])
+  if('enzyme' %in% colnames(lamp$lamp))amped$enzyme<-sapply(rownames(amped),function(xx)lamp$lamp$enzyme[lamp$lamp$Well==xx][1])
   pos<-data.frame(
     'STATH'=tapply(amped$nm587.isGood,amped[,c('target')],sum),
     'As1e'=tapply(amped$nm682.isGood,amped[,c('target')],sum),
@@ -190,7 +191,24 @@ calcAmps2<-function(lamp){
   )
   return(list('amped'=amped,'pos'=pos))
 }
-plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt)){
+calcAmpsSNP<-function(lamp){
+  amped<-cbind(
+    'nm587'=checkAmps(lamp$lamp,lamp$melt,'587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=85,minMeltDiff=2,minAmp=20000,baselineTime=4,isTemp=TRUE),
+    'nm682'=checkAmps(lamp$lamp,lamp$melt,'682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=85,minMeltDiff=2,minAmp=100000,baselineTime=4,isTemp=TRUE),
+    'nm520'=checkAmps(lamp$lamp,lamp$melt,'520nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=80,minMeltDiff=1.2,baselineTime=4,isTemp=TRUE)
+  )
+  amped$target<-sapply(rownames(amped),function(xx)lamp$lamp$target[lamp$lamp$Well==xx][1])
+  if('enzyme' %in% colnames(lamp$lamp))amped$enzyme<-sapply(rownames(amped),function(xx)lamp$lamp$enzyme[lamp$lamp$Well==xx][1])
+  amped$row<-sapply(rownames(amped),function(xx)lamp$lamp$row[lamp$lamp$Well==xx][1])
+  amped$col<-sapply(rownames(amped),function(xx)lamp$lamp$col[lamp$lamp$Well==xx][1])
+  pos<-data.frame(
+    'STATH'=tapply(amped$nm587.isGood,amped[,c('target')],sum),
+    'As1e'=tapply(amped$nm682.isGood,amped[,c('target')],sum),
+    'Penn'=tapply(amped$nm520.isGood,amped[,c('target')],sum)
+  )
+  return(list('amped'=amped,'pos'=pos))
+}
+plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt),xVar='timeMin',xlab='Time (m)'){
   nPlot<-length(primers)*ifelse(plotMelts,2,1)
   nCol<-length(unique(lamp$lamp$target))
   sameY<-TRUE
@@ -198,23 +216,26 @@ plotPats<-function(lamp,pos,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm
   par(mar=c(4,2.5,1.1,1),mgp=c(2.5,1,0))
   for(ii in names(primers)){
     indicate<-if(ii %in% colnames(pos))rownames(pos)[pos[,ii]>0] else c()
-    plotSummary2(lamp$lamp,'timeMin','Time (m)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=ii,sameY=sameY,indicate=indicate,addYFirst=TRUE)
+    plotSummary2(lamp$lamp,xVar,xlab,primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=ii,sameY=sameY,indicate=indicate,addYFirst=TRUE)
     if(plotMelts)plotSummary2(lamp$melt,'temp','Temperature (C)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=ii,sameY=sameY,indicate=indicate,addYFirst=TRUE)
   }
 }
 
-runAll<-function(file,outDir=dirname(file)){
+runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file)){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
   if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
   else extraTemps<-c()
   lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
+  if(isSAP3)primers<-c('STATH'='587nm','As1e'='520nm','Penn'='682nm')
+  else primers<-c('STATH'='587nm','Penn'='520nm','As1e'='682nm')
   amps<-calcAmps2(lamp)
   pdf(sprintf('%s.pdf',outFile),width=1.4*length(unique(lamp$lamp$target)),height=10)
-    plotPats(lamp,amps$pos,c('STATH'='587nm','Penn'='520nm','As1e'='682nm'))
+    plotPats(lamp,amps$pos,primers)
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
   print(amps$pos[apply(amps$pos[,-1],1,sum)>0,])
   invisible(list('lamp'=lamp,'amp'=amps))
 }
+
