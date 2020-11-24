@@ -69,7 +69,7 @@ plotSummary<-function(melt,xCol,xlab,fls,rowIds,colIds,cols,showLegend=TRUE,plot
   if(any(sapply(fls,length)!=1))stop('Ambiguous fls')
   plotSummary2(tmp,xCol,xlab,fls,cols,showLegend,'PLOTCOL_XXX','LINECOL_XXX',legendInset,ncol,sameY,showMain,yScale,ylab,...)
 }
-plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=c(-.16,-.24),ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',legendArgs=list(),indicate=NULL,mainExtra='',logXY='',ylims=NULL,lwd=2,plotPoints=NULL,addYFirst=FALSE,cex.lab=1,...){
+plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=c(-.16,-.24),ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',legendArgs=list(),indicate=NULL,indicateYellow=NULL,mainExtra='',logXY='',ylims=NULL,lwd=2,plotPoints=NULL,addYFirst=FALSE,cex.lab=1,yMaxs=NULL,yScaleFirst=FALSE,...){
   if(length(fls)==1)fls<-structure(rep(fls,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
   if(length(mainExtra)==1)mainExtra<-structure(rep(mainExtra,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
   plots<-unique(melt[,plotCol])
@@ -77,16 +77,16 @@ plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lin
     fl<-fls[ii]
     thisDat<-melt[melt[,plotCol]==ii,]
     if(is.null(ylims)){
-      if(sameY)ylim<-range(melt[,fl])
+      if(sameY)ylim<-c(min(melt[,fl]),max(c(melt[,fl],yMaxs[fl])))
       else ylim<-range(thisDat[,fl])
     }else{
       ylim<-ylims
     }
-    main<-sprintf('%s%s%s%s%s',trimws(ii),ifelse(addYFirst,'',' '),ifelse(addYFirst,'',fl),ifelse(mainExtra=='','',' '),mainExtra[ii])
+    main<-sprintf('%s%s%s%s%s',trimws(ii),ifelse(addYFirst,'',' '),ifelse(addYFirst,'',fl),ifelse(mainExtra[ii]=='','',' '),mainExtra[ii])
     if(addYFirst&ii==plots[1])lab<-sprintf("%s RLU (x1000)",fl)
     else lab<-ylab
-    plot(1,1,type='n',ylim=ylim/yScale,log=logXY,xlim=range(na.omit(thisDat[,xCol])),xlab='',ylab='',las=1,mgp=c(3,.8,0),...)
-    title(ifelse(showMain,main,''),line=0.1,cex.main=cex.lab)
+    plot(1,1,type='n',ylim=ylim/yScale,log=logXY,xlim=range(na.omit(thisDat[,xCol])),xlab='',ylab='',las=1,mgp=c(3,.8,0),yaxt=ifelse(yScaleFirst&ii!=plots[1],'n','s'),...)
+    title(ifelse(showMain,main,''),line=0.1-nchar(gsub('[^\n]+','',main)),cex.main=cex.lab)
     title(xlab=xlab,mgp=c(2.4,1,0),cex.lab=cex.lab)
     title(ylab=lab,mgp=c(3.1,1,0),xpd=NA,cex.lab=cex.lab)
     for(kk in unique(thisDat[,lineCol])){
@@ -102,6 +102,8 @@ plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lin
     }
     if(ii %in% indicate){
       box('figure',lwd=6,col=cols[kk])
+    }else if(ii %in% indicateYellow){
+      box('figure',lwd=4,col='gold')
     }
   }
   if(showLegend)do.call(legend,c(list('topleft',names(cols),lwd=2,col=cols,inset=legendInset,xpd=NA,ncol=ncol),legendArgs))
@@ -208,16 +210,17 @@ calcAmpsSNP<-function(lamp){
   )
   return(list('amped'=amped,'pos'=pos))
 }
-plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt),xVar='timeMin',xlab='Time (m)'){
+plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt),xVar='timeMin',xlab='Time (m)',minorPos=NULL){
   nPlot<-length(primers)*ifelse(plotMelts,2,1)
   nCol<-length(unique(lamp$lamp$target))
   sameY<-TRUE
   layout(cbind(0,rbind(matrix(1:(nPlot*nCol),nrow=nPlot,byrow=TRUE),0)),height=c(rep(1,nPlot),.1),width=c(.4,rep(1,nCol)))
-  par(mar=c(4,2.5,1.1,1),mgp=c(2.5,1,0))
+  par(mar=c(4,0,1.1,0),mgp=c(2.5,1,0))
   for(ii in names(primers)){
     indicate<-if(ii %in% colnames(pos))rownames(pos)[pos[,ii]>0] else c()
-    plotSummary2(lamp$lamp,xVar,xlab,primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=ii,sameY=sameY,indicate=indicate,addYFirst=TRUE)
-    if(plotMelts)plotSummary2(lamp$melt,'temp','Temperature (C)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=ii,sameY=sameY,indicate=indicate,addYFirst=TRUE)
+    indicateYellow<-if(ii %in% colnames(minorPos))rownames(minorPos)[minorPos[,ii]>0] else c()
+    plotSummary2(lamp$lamp,xVar,xlab,primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE,yMaxs=c('587nm'=2e4,'520nm'=2e5,'682nm'=2e5))
+    if(plotMelts)plotSummary2(lamp$melt,'temp','Temperature (C)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE)
   }
 }
 
@@ -228,14 +231,67 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file)){
   else extraTemps<-c()
   lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
-  if(isSAP3)primers<-c('STATH'='587nm','As1e'='520nm','Penn'='682nm')
-  else primers<-c('STATH'='587nm','Penn'='520nm','As1e'='682nm')
-  amps<-calcAmps2(lamp)
-  pdf(sprintf('%s.pdf',outFile),width=1.4*length(unique(lamp$lamp$target)),height=10)
-    plotPats(lamp,amps$pos,primers)
+  if(isSAP3){
+    conditions<-list(
+      'STATH'=list('fl'='587nm',minFoldIncrease=2,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=10000,baselineTime=4,isTemp=TRUE),
+      'As1e'=list('fl'='520nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=1.5,minAmp=100000,baselineTime=4,isTemp=TRUE),
+      'Penn'=list('fl'='682nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=90,minMeltDiff=2,baselineTime=4,isTemp=TRUE)
+    )
+    conditionsMaybe<-list(
+      'STATH'=list('fl'='587nm',minFoldIncrease=2,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=Inf,baselineTime=4,isTemp=TRUE),
+      'As1e'=list('fl'='520nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=1.5,minAmp=30000,baselineTime=4,isTemp=TRUE),
+      'Penn'=list('fl'='682nm',minFoldIncrease=3,minAmp=30000,meltTempNum=25,meltTempNum2=90,minMeltDiff=2,baselineTime=4,isTemp=TRUE)
+    )
+  }else{
+    conditions<-list(
+      'STATH'=list('fl'='587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=20000,baselineTime=4,isTemp=TRUE),
+      'As1e'=list('fl'='682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=2,minAmp=100000,baselineTime=4,isTemp=TRUE),
+      'Penn'=list('fl'='520nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
+    )
+    conditionsMaybe<-list(
+      'STATH'=list('fl'='587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=Inf,baselineTime=4,isTemp=TRUE),
+      'As1e'=list('fl'='682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=2,minAmp=30000,baselineTime=4,isTemp=TRUE),
+      'Penn'=list('fl'='520nm',minFoldIncrease=3,minAmp=30000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
+    )
+  }
+  primers<-sapply(conditions,'[[','fl')
+  amps<-do.call(calcAmpsGeneric,c(list(lamp),conditions))
+  amps2<-do.call(calcAmpsGeneric,c(list(lamp),conditionsMaybe))
+  amps2$pos[amps$pos>0]<-0
+  pdf(sprintf('%s.pdf',outFile),width=1.3*length(unique(lamp$lamp$target)),height=10)
+    plotPats(lamp,amps$pos,primers,minorPos=amps2$pos)
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
-  print(amps$pos[apply(amps$pos[,-1],1,sum)>0,])
+  print(amps$pos[apply(amps$pos[,toupper(colnames(amps$pos))!='STATH'],1,sum)>0,])
+  print(amps2$pos[apply(amps2$pos[,toupper(colnames(amps$pos))!='STATH'],1,sum)>0,,drop=FALSE])
   invisible(list('lamp'=lamp,'amp'=amps))
 }
 
+calcAmpsGeneric<-function(lamp,...){
+  args<-list(...)
+  if(length(args)==0)args<-list(
+    'E1'=list(fl='520nm',minFoldIncrease=1.5,meltTempNum=47,meltTempNum2=53,minMeltDiff=1.25,minAmp=10000,baselineTime=4),
+    'STATH'=list(fl='587nm',minFoldIncrease=1.5,meltTempNum=1,meltTempNum2=60,minMeltDiff=1.5,baselineTime=4),
+    'As1e'=list(fl='623nm',minFoldIncrease=2,meltTempNum=38,meltTempNum2=50,minMeltDiff=1.2,minAmp=10000,baselineTime=4),
+    'Penn'=list(fl='682nm',minFoldIncrease=2,minAmp=20000,meltTempNum=1,meltTempNum2=65,minMeltDiff=2,baselineTime=4)
+  )
+  amped<-do.call(cbind,lapply(structure(names(args),.Names=names(args)),function(xx){
+    do.call(checkAmps,c(lamp[c('lamp','melt')],args[[xx]]))
+  }))
+  if('target' %in% colnames(lamp$lamp)){
+    lookup<-unique(lamp$lamp[,c('target','Well')])
+    rownames(lookup)<-lookup$Well
+    amped$target<-lookup[as.character(rownames(amped)),'target']
+    #amped$target<-sapply(rownames(amped),function(xx)lamp$lamp$target[lamp$lamp$Well==xx][1])
+  }else{
+    amped$target<-rownames(amped)
+  }
+  if('enzyme' %in% colnames(lamp$lamp)){
+    lookup<-unique(lamp$lamp[,c('enzyme','Well')])
+    rownames(lookup)<-lookup$Well
+    amped$enzyme<-lookup[as.character(rownames(amped)),'enzyme']
+    #amped$enzyme<-sapply(rownames(amped),function(xx)lamp$lamp$enzyme[lamp$lamp$Well==xx][1])
+  }
+  pos<-do.call(cbind,lapply(structure(names(args),.Names=names(args)),function(xx)tapply(amped[,sprintf('%s.isGood',xx)],amped[,'target'],sum)))
+  return(list('amped'=amped,'pos'=pos))
+}
