@@ -131,30 +131,30 @@ checkAmps<-function(lamp,melt,fl,minAmp=2500,meltTempNum=35,meltTempNum2=length(
 
 
 findWellLine<-function(xls) suppressMessages(which(as.data.frame(readxl::read_excel(xls,'Raw Data',n_max=50))[,1]=='Well'))
-readXls<-function(xls,isQS6=FALSE,extraTemps=c()){
+readXls<-function(xls,isQS6=FALSE,extraTemps=c(),nCycle=200){
   if(dir.exists(xls)){
     file1<-list.files(xls,'_Raw Data_',full.names=TRUE)
     file2<-list.files(xls,'_Melt Curve Raw_',full.names=TRUE)
     file3<-list.files(xls,'_Melt Curve Result',full.names=TRUE)
-    lamp<-readLamp(file1,file2,201,skip=23,correctCycles=TRUE)
+    lamp<-readLamp(file1,file2,nCycle+1,skip=23,correctCycles=TRUE)
     info<-unique(read.csv(file3,stringsAsFactors=FALSE,skip=23)[,c('Well.Position','Sample')])
     info[,'Sample Name']<-trimws(info$Sample)
     rownames(info)<-info[,'Well.Position']
   }else if(isQS6){
     nSkip<-findWellLine(xls)-1
-    lamp<-readLamp(xls,xls,201,skip=nSkip,correctCycles=TRUE,meltRawTab='Melt Curve Raw')
+    lamp<-readLamp(xls,xls,nCycle+1,skip=nSkip,correctCycles=TRUE,meltRawTab='Melt Curve Raw')
     info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=nSkip))[,c('Well Position','Sample')])
     info[,'Sample Name']<-trimws(info$Sample)
     rownames(info)<-info[,'Well Position']
   }else{
     nSkip<-findWellLine(xls)-1
-    lamp<-readLamp(xls,xls,201,skip=nSkip,meltRawTab='Melt Curve Raw Data')
+    lamp<-readLamp(xls,xls,nCycle+1,skip=nSkip,meltRawTab='Melt Curve Raw Data')
     info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=nSkip))[,c('Well Position','Sample Name')])
     rownames(info)<-info[,'Well Position']
   }
   lamp<-lapply(lamp[sapply(lamp,function(xx)!is.null(xx)&&nrow(xx)>0)],function(xx){if(is.null(xx))return(xx);xx$target<-info[xx$well,'Sample Name'];xx$dummy<-1;return(xx[order(xx$target),])})
   if(!is.null(extraTemps)&&!is.null(lamp$extra)&&nrow(lamp$extra)>0){
-    lamp$extra$temp<-extraTemps[lamp$extra$Cycle-200]
+    lamp$extra$temp<-extraTemps[lamp$extra$Cycle-nCycle]
     if(is.null(lamp$melt))lamp$melt<-lamp$extra
   }
   lamp<-lapply(lamp,function(xx){xx[!is.na(xx$target),]})
@@ -224,12 +224,12 @@ plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='
   }
 }
 
-runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file)){
+runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
   if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
   else extraTemps<-c()
-  lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps)
+  lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps,nCycle=nCycle)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
   if(isSAP3){
     conditions<-list(
@@ -294,4 +294,12 @@ calcAmpsGeneric<-function(lamp,...){
   }
   pos<-do.call(cbind,lapply(structure(names(args),.Names=names(args)),function(xx)tapply(amped[,sprintf('%s.isGood',xx)],amped[,'target'],sum)))
   return(list('amped'=amped,'pos'=pos))
+}
+
+fitCopy<-function(isGood,copy){
+  optimize(function(prob){
+    pNoDetect<-copy*log(1-prob)
+    pDetect<-log(1-exp(pNoDetect)) #make more robust?
+    sum(-ifelse(isGood,pDetect,pNoDetect))
+  },0:1)
 }
