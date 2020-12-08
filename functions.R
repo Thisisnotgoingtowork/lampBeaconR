@@ -231,6 +231,7 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=20
   else extraTemps<-c()
   lamp<-readXls(file,isQS6=isQS6,extraTemps=extraTemps,nCycle=nCycle)
   lamp$melt[,c('587nm','520nm','682nm')][is.na(lamp$melt[,c('587nm','520nm','682nm')])]<-1
+  if(is.null(lamp$melt)||nrow(lamp$melt)==0)stop('Melt curve not detected')
   if(isSAP3){
     conditions<-list(
       'STATH'=list('fl'='587nm',minFoldIncrease=2,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=10000,baselineTime=4,isTemp=TRUE),
