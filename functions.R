@@ -152,7 +152,7 @@ readXls<-function(xls,isQS6=FALSE,extraTemps=c(),nCycle=200){
     info<-unique(as.data.frame(readxl::read_excel(xls,'Results',skip=nSkip))[,c('Well Position','Sample Name')])
     rownames(info)<-info[,'Well Position']
   }
-  lamp<-lapply(lamp[sapply(lamp,function(xx)!is.null(xx)&&nrow(xx)>0)],function(xx){if(is.null(xx))return(xx);xx$target<-info[xx$well,'Sample Name'];xx$dummy<-1;return(xx[order(xx$target),])})
+  lamp<-lapply(lamp[sapply(lamp,function(xx)!is.null(xx)&&nrow(xx)>0)],function(xx){if(is.null(xx))return(xx);xx$target<-info[match(xx$well,rownames(info)),'Sample Name'];xx$dummy<-1;return(xx[order(xx$target),])})
   if(!is.null(extraTemps)&&!is.null(lamp$extra)&&nrow(lamp$extra)>0){
     lamp$extra$temp<-extraTemps[lamp$extra$Cycle-nCycle]
     if(is.null(lamp$melt))lamp$melt<-lamp$extra
@@ -297,10 +297,3 @@ calcAmpsGeneric<-function(lamp,...){
   return(list('amped'=amped,'pos'=pos))
 }
 
-fitCopy<-function(isGood,copy){
-  optimize(function(prob){
-    pNoDetect<-copy*log(1-prob)
-    pDetect<-log(1-exp(pNoDetect)) #make more robust?
-    sum(-ifelse(isGood,pDetect,pNoDetect))
-  },0:1)
-}
