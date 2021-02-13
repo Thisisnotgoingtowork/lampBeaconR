@@ -312,6 +312,7 @@ condenseSamples<-function(files,pattern48='^48',rows=1:8,cols=1:6){
 }
 
 findSamples<-function(samples,files,outFile=NULL){
+  if(length(samples)==1 && file.exists(samples))samples<-read.csv(samples,stringsAsFactors=FALSE)[,1]
   dat<-condenseSamples(files)
   ids<-lapply(samples,function(xx)which(dat$sample==xx))
   nHit<-sapply(ids,length)
@@ -330,3 +331,4 @@ findSamples<-function(samples,files,outFile=NULL){
   if(!is.null(outFile))write.csv(matches,outFile,row.names=FALSE)
   return(matches)
 }
+
