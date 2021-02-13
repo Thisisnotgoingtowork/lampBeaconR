@@ -330,6 +330,3 @@ findSamples<-function(samples,files,outFile=NULL){
   if(!is.null(outFile))write.csv(matches,outFile,row.names=FALSE)
   return(matches)
 }
-findSamples(c('pos_010000','S-210209-03112','S-210209-00889','NOTAREALSAMPLE'),'384_Plate_COVID SAFE Sample 2021_02_10 Stemmler_SampleTemplate.xlsx','badIds.csv')
-
-
