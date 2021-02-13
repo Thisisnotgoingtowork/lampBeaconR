@@ -297,3 +297,39 @@ calcAmpsGeneric<-function(lamp,...){
   return(list('amped'=amped,'pos'=pos))
 }
 
+condenseSamples<-function(files,pattern48='^48',rows=1:8,cols=1:6){
+  out<-do.call(rbind,lapply(files,function(xx){
+    sheets<-readxl::excel_sheets(xx)
+    do.call(rbind,lapply(sheets[grepl(pattern48,sheets)],function(yy){
+      tmp<-as.data.frame(suppressMessages(readxl::read_excel(xx,yy)))[rows,cols]
+      out<-data.frame('row'=rep(1:length(rows),length(cols)),'col'=rep(1:length(cols),each=length(rows)),'sample'=unlist(tmp),stringsAsFactors=FALSE)
+      out$file<-xx
+      out$tab<-yy
+      return(out)
+    }))
+  }))
+  return(out)
+}
+
+findSamples<-function(samples,files,outFile=NULL){
+  dat<-condenseSamples(files)
+  ids<-lapply(samples,function(xx)which(dat$sample==xx))
+  nHit<-sapply(ids,length)
+  if(any(nHit==0))warning('Samples ',paste(samples[nHit==0],collapse=', '),' not found')
+  if(any(nHit>1))warning('Samples ',paste(samples[nHit>1],collapse=', '),' had multiple matches')
+  filler<-dat[1,]
+  filler[,]<-NA
+  matches<-do.call(rbind,lapply(1:length(samples),function(ii){
+    xx<-ids[[ii]]
+    if(length(xx)==0)out<-filler
+    else out<-dat[xx,]
+    if(any(!out$sample %in% c(samples[ii],NA)))stop('Problem with sample finding')
+    out$sample<-samples[ii] #fill in for missing samples
+    return(out[,c('sample','file','tab','row','col')])
+  }))
+  if(!is.null(outFile))write.csv(matches,outFile,row.names=FALSE)
+  return(matches)
+}
+findSamples(c('pos_010000','S-210209-03112','S-210209-00889','NOTAREALSAMPLE'),'384_Plate_COVID SAFE Sample 2021_02_10 Stemmler_SampleTemplate.xlsx','badIds.csv')
+
+
