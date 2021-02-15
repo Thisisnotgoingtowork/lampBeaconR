@@ -210,21 +210,32 @@ calcAmpsSNP<-function(lamp){
   )
   return(list('amped'=amped,'pos'=pos))
 }
-plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt),xVar='timeMin',xlab='Time (m)',minorPos=NULL){
+plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='623nm','Penn'='682nm'),plotMelts=!is.null(lamp$melt),xVar='timeMin',xlab='Time (m)',minorPos=NULL,nPages=1){
   nPlot<-length(primers)*ifelse(plotMelts,2,1)
-  nCol<-length(unique(lamp$lamp$target))
   sameY<-TRUE
+  nCol<-ceiling(length(unique(lamp$lamp$target))/nPages)
   layout(cbind(0,rbind(matrix(1:(nPlot*nCol),nrow=nPlot,byrow=TRUE),0)),height=c(rep(1,nPlot),.1),width=c(.4,rep(1,nCol)))
   par(mar=c(4,0,1.1,0),mgp=c(2.5,1,0))
-  for(ii in names(primers)){
-    indicate<-if(ii %in% colnames(pos))rownames(pos)[pos[,ii]>0] else c()
-    indicateYellow<-if(ii %in% colnames(minorPos))rownames(minorPos)[minorPos[,ii]>0] else c()
-    plotSummary2(lamp$lamp,xVar,xlab,primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE,yMaxs=c('587nm'=2e4,'520nm'=2e5,'682nm'=2e5))
-    if(plotMelts)plotSummary2(lamp$melt,'temp','Temperature (C)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE)
+  allId<-unique(lamp$lamp[,'target'])
+  pageId<-split(allId, ceiling(seq_along(allId)/ceiling(length(allId)/nPages)))
+  maxs<-sapply(structure(primers,.Names=primers),function(xx)max(lamp$lamp[,xx]))
+  if(plotMelts)meltMaxs<-sapply(structure(primers,.Names=primers),function(xx)max(lamp$melt[,xx]))
+  for(page in 1:nPages){
+    thisDat<-lapply(lamp,function(xx)xx[xx[,'target'] %in% pageId[[page]],])
+    for(ii in names(primers)){
+      indicate<-if(ii %in% colnames(pos))rownames(pos)[pos[,ii]>0] else c()
+      indicateYellow<-if(ii %in% colnames(minorPos))rownames(minorPos)[minorPos[,ii]>0] else c()
+      plotSummary2(thisDat$lamp,xVar,xlab,primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE,yMaxs=pmax(maxs[primers],c('587nm'=2e4,'520nm'=2e5,'682nm'=2e5)[primers],na.rm=TRUE))
+      if(length(pageId[[page]])<nCol)for(jj in 1:(nCol-length(pageId[[page]])))plot(1,1,type='n',xaxt='n',yaxt='n',bty='n',xlab='',ylab='')
+      if(plotMelts){
+        plotSummary2(thisDat$melt,'temp','Temperature (C)',primers[ii],ifelse(tolower(ii)=='sybr9','black',ifelse(tolower(ii)=='stath','blue','red')),plotCol='target',lineCol='dummy',showLegend=FALSE,mainExtra=sprintf('\n%s',ii),sameY=sameY,indicate=indicate,indicateYellow=indicateYellow,addYFirst=TRUE,yScaleFirst=TRUE,yMaxs=pmax(maxs[primers],c('587nm'=2e4,'520nm'=2e5,'682nm'=2e5)[primers],na.rm=TRUE))
+        if(length(pageId[[page]])<nCol)for(jj in 1:(nCol-length(pageId[[page]])))plot(1,1,type='n',xaxt='n',yaxt='n',bty='n',xlab='',ylab='')
+      }
+    }
   }
 }
 
-runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200,censorY=NULL){
+runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200,censorY=NULL,nPages=1){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
   if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
@@ -269,8 +280,8 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=20
       print(range(plotDat$lamp[,ii]))
     }
   }
-  pdf(sprintf('%s.pdf',outFile),width=1.3*length(unique(lamp$lamp$target)),height=10)
-    plotPats(plotDat,amps$pos,primers,minorPos=amps2$pos)
+  pdf(sprintf('%s.pdf',outFile),width=1.3*length(unique(lamp$lamp$target))/nPages,height=10)
+    plotPats(plotDat,amps$pos,primers,minorPos=amps2$pos,nPages=nPages)
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
   noStath<-rownames(amps$pos)[amps$pos[,'STATH']==0]
