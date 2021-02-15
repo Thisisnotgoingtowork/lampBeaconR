@@ -263,6 +263,12 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=20
     plotPats(lamp,amps$pos,primers,minorPos=amps2$pos)
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
+  noStath<-rownames(amps$pos)[amps$pos[,'STATH']==0]
+  if(length(noStath)>0){
+    message('No stath:')
+    message(paste(noStath,collapse=', '))
+  }
+  write.csv(data.frame('id'=noStath),sprintf('%s_noStath.csv',outFile),row.names=FALSE)
   print(amps$pos[apply(amps$pos[,toupper(colnames(amps$pos))!='STATH'],1,sum)>0,])
   print(amps2$pos[apply(amps2$pos[,toupper(colnames(amps$pos))!='STATH'],1,sum)>0,,drop=FALSE])
   invisible(list('lamp'=lamp,'amp'=amps))
