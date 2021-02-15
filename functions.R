@@ -224,7 +224,7 @@ plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='
   }
 }
 
-runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200){
+runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200,censorY=NULL){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
   if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
@@ -259,8 +259,18 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=20
   amps<-do.call(calcAmpsGeneric,c(list(lamp),conditions))
   amps2<-do.call(calcAmpsGeneric,c(list(lamp),conditionsMaybe))
   amps2$pos[amps$pos>0]<-0
+  plotDat<-lamp
+  for(ii in names(censorY)){
+    isCensor<-any(sapply(lamp,function(xx)any(xx[,ii]>censorY[ii])))
+    if(isCensor){
+      warning('Censoring ',ii,' values higher than ',censorY[ii],' to ',censorY[ii])
+      print(range(plotDat$lamp[,ii]))
+      plotDat<-lapply(plotDat,function(xx){xx[xx[,ii]>censorY[ii],ii]<-censorY[ii];return(xx)})
+      print(range(plotDat$lamp[,ii]))
+    }
+  }
   pdf(sprintf('%s.pdf',outFile),width=1.3*length(unique(lamp$lamp$target)),height=10)
-    plotPats(lamp,amps$pos,primers,minorPos=amps2$pos)
+    plotPats(plotDat,amps$pos,primers,minorPos=amps2$pos)
   dev.off()
   write.csv(amps$pos[,colnames(amps$pos)!='E1'],sprintf('%s.csv',outFile))
   noStath<-rownames(amps$pos)[amps$pos[,'STATH']==0]
