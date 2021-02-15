@@ -235,7 +235,7 @@ plotPats<-function(lamp,pos=NULL,primers=c('E1'='520nm','STATH'='587nm','As1e'='
   }
 }
 
-runAll<-function(file,outDir=dirname(file),isSAP3=grepl('SAPv?3',file),nCycle=200,censorY=NULL,nPages=1){
+runAll<-function(file,outDir=dirname(file),isSAP3=grepl('[Ss][Aa][Pp][Vv]?3',file),nCycle=200,censorY=NULL,nPages=1){
   outFile<-sprintf('%s/screening_%s',outDir,sub('.xlsx?','',basename(file)))
   isQS6<-dir.exists(file)||grepl('QuantStudio.*6 Pro',as.data.frame(readxl::read_excel(file,'Raw Data',n_max=6))[6,2])||!'Melt Curve Raw Data' %in% readxl::excel_sheets(file)
   if(!any(c('Melt Curve Raw','Melt Curve Raw Data') %in% readxl::excel_sheets(file)))extraTemps<-c(95,78,72,62,25)
