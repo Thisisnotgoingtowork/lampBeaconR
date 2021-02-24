@@ -256,12 +256,12 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('[Ss][Aa][Pp][Vv]?3',fil
     )
   }else{
     conditions<-list(
-      'STATH'=list('fl'='587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=20000,baselineTime=4,isTemp=TRUE),
+      'STATH'=list('fl'='587nm',minFoldIncrease=2,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=10000,baselineTime=4,isTemp=TRUE),
       'As1e'=list('fl'='682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=2,minAmp=100000,baselineTime=4,isTemp=TRUE),
       'Penn'=list('fl'='520nm',minFoldIncrease=3,minAmp=100000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
     )
     conditionsMaybe<-list(
-      'STATH'=list('fl'='587nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=Inf,baselineTime=4,isTemp=TRUE),
+      'STATH'=list('fl'='587nm',minFoldIncrease=2,meltTempNum=25,meltTempNum2=78,minMeltDiff=2,minAmp=Inf,baselineTime=4,isTemp=TRUE),
       'As1e'=list('fl'='682nm',minFoldIncrease=3,meltTempNum=25,meltTempNum2=72,minMeltDiff=2,minAmp=30000,baselineTime=4,isTemp=TRUE),
       'Penn'=list('fl'='520nm',minFoldIncrease=3,minAmp=30000,meltTempNum=25,meltTempNum2=90,minMeltDiff=1.5,baselineTime=4,isTemp=TRUE)
     )
@@ -275,9 +275,7 @@ runAll<-function(file,outDir=dirname(file),isSAP3=grepl('[Ss][Aa][Pp][Vv]?3',fil
     isCensor<-any(sapply(lamp,function(xx)any(xx[,ii]>censorY[ii])))
     if(isCensor){
       warning('Censoring ',ii,' values higher than ',censorY[ii],' to ',censorY[ii])
-      print(range(plotDat$lamp[,ii]))
       plotDat<-lapply(plotDat,function(xx){xx[xx[,ii]>censorY[ii],ii]<-censorY[ii];return(xx)})
-      print(range(plotDat$lamp[,ii]))
     }
   }
   pdf(sprintf('%s.pdf',outFile),width=1.3*length(unique(lamp$lamp$target))/nPages,height=10)
