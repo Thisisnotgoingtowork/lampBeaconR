@@ -38,6 +38,8 @@ readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,sk
   lamp<-melt[melt$Cycle<meltStart,]
   lamp$time<-lamp$Cycle*timePerCyle
   lamp$timeMin<-lamp$Cycle*timePerCyle/60
+  #hardcoded magic number 5 cycles
+  for(ii in names(flNames))lamp[,sprintf('%s - baseline',flNames[ii])]<-ave(lamp[,flNames[ii]],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
   meltCurve<-melt[melt$Cycle %in% (meltStart+1:length(ts)-1),]
   meltCurve$temp<-ts[meltCurve$Cycle-meltStart+1]
   if(length(ts)==0)meltCurve<-NULL
@@ -355,5 +357,36 @@ findSamples<-function(samples,files,outFile=NULL){
   }))
   if(!is.null(outFile))write.csv(matches,outFile,row.names=FALSE)
   return(matches)
+}
+
+
+readStepOne<-function(rawFile,rawDataTab='Raw Data',skip=7,cycles=120,minPerCycle=.5){
+  dat<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
+  dat$col<-as.numeric(sub('[A-Z]','',dat$Well))
+  dat$row<-trimws(sub('[0-9]+','',dat$Well))
+  dat$rowNum<-sapply(dat$row,function(xx)which(LETTERS==xx))
+  dat$well<-dat$Well
+  lamp<-dat[dat$Cycle<=cycles,]
+  lamp$timeMin<-lamp$Cycle*minPerCycle
+  for(ii in c('BLUE','GREEN','YELLOW','RED'))lamp[,sprintf('%s - baseline',ii)]<-ave(lamp[,ii],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
+  melt<-dat[dat$Cycle>cycles,]
+  return(list('lamp'=lamp,'melt'=melt))
+}
+
+calcCt<-function(fluor,well,meta=NULL,threshold=100000,timePerStep=.5,digits=1,maxTime=60){
+  ct<-tapply(fluor,well,function(xx)suppressWarnings(approx(xx,1:length(xx),threshold)$y)*timePerStep)
+  ct<-data.frame('ct'=as.vector(ct),'well'=names(ct),stringsAsFactors=FALSE)
+  ct$row<-sub('^([A-Z]).*','\\1',ct$well)
+  ct$col<-as.numeric(sub('^([A-Z])(.*)','\\2',ct$well))
+  ct$rowNum<-structure(1:26,.Names=LETTERS)[ct$row]
+  #out<-tapply(ct$ct,ct[,c('row','col')],round,1)
+  ct[is.na(ct$ct),'ct']<-maxTime
+  ct$ct<-round(ct$ct,digits=digits)
+  if(!is.null(meta)){
+    compressMeta<-by(meta,well,unique)
+    if(any(sapply(compressMeta,nrow)>1))stop('More than one unique metadata for well ',paste(names(compressMeta)[sapply(compressMeta,nrow)>1],collapse=', '))
+    ct<-cbind(ct,do.call(rbind,compressMeta)[ct$well,])
+  }
+  return(ct)
 }
 
