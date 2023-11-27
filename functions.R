@@ -159,7 +159,7 @@ readXls<-function(xls,isQS6=FALSE,extraTemps=c(),nCycle=200){
     lamp$extra$temp<-extraTemps[lamp$extra$Cycle-nCycle]
     if(is.null(lamp$melt))lamp$melt<-lamp$extra
   }
-  lamp<-lapply(lamp,function(xx){xx[!is.na(xx$target),]})
+  #lamp<-lapply(lamp,function(xx){xx[!is.na(xx$target),]})
   return(lamp)
 }
 calcAmps<-function(lamp){
