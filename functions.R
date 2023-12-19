@@ -40,7 +40,8 @@ readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,sk
   lamp$timeMin<-lamp$Cycle*timePerCyle/60
   #hardcoded magic number 5 cycles
   for(ii in names(flNames))lamp[,sprintf('%s - baseline',flNames[ii])]<-ave(lamp[,flNames[ii]],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
-  meltCurve<-melt[melt$Cycle %in% (meltStart+1:length(ts)-1),]
+  #max to make sure we don't get 1:0
+  meltCurve<-melt[melt$Cycle %in% (meltStart+1:max(1,length(ts))-1),]
   meltCurve$temp<-ts[meltCurve$Cycle-meltStart+1]
   if(length(ts)==0)meltCurve<-NULL
   extra<-melt[melt$Cycle > meltStart+length(ts)-1,]
