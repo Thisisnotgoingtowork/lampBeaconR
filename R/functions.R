@@ -6,7 +6,7 @@ readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,sk
     melt<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
     colnames(melt)<-sub('[- ]','.',colnames(melt))
   }else{
-    melt<-read.csv(rawFile,skip=skip,sep=sep,stringsAsFactors=FALSE) 
+    melt<-read.csv(rawFile,skip=skip,sep=sep,stringsAsFactors=FALSE)
   }
   if(is.numeric(meltFile)|is.null(meltFile)){
     ts<-meltFile
@@ -369,19 +369,6 @@ findSamples<-function(samples,files,outFile=NULL){
   return(matches)
 }
 
-
-readStepOne<-function(rawFile,rawDataTab='Raw Data',skip=7,cycles=120,minPerCycle=.5){
-  dat<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
-  dat$col<-as.numeric(sub('[A-Z]','',dat$Well))
-  dat$row<-trimws(sub('[0-9]+','',dat$Well))
-  dat$rowNum<-sapply(dat$row,function(xx)which(LETTERS==xx))
-  dat$well<-dat$Well
-  lamp<-dat[dat$Cycle<=cycles,]
-  lamp$timeMin<-lamp$Cycle*minPerCycle
-  for(ii in c('BLUE','GREEN','YELLOW','RED'))lamp[,sprintf('%s - baseline',ii)]<-ave(lamp[,ii],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
-  melt<-dat[dat$Cycle>cycles,]
-  return(list('lamp'=lamp,'melt'=melt))
-}
 
 calcCt<-function(fluor,well,meta=NULL,threshold=100000,timePerStep=.5,digits=1,maxTime=60){
   ct<-tapply(fluor,well,function(xx)suppressWarnings(approx(xx,1:length(xx),threshold)$y)*timePerStep)
