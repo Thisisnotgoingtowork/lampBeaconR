@@ -4,10 +4,7 @@
 #'
 #' @param lamp a list that contains raw data
 #' @param rowStandardize a bool that indicate if the data is in the correct form or not
-#' @return none
-#' @export
-
-
+#'
 
 plotLamp<-function(lamp,rowStandardize=FALSE){
   mCols<-colnames(lamp)[grep('x[0-9]+\\.m',colnames(lamp))]
