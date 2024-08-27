@@ -1,145 +1,8 @@
 #https://sashamaps.net/docs/tools/20-colors/
 cols8<-c('#e6194b', '#f58231', '#ffe119', '#bfef45', '#3cb44b','#42d4f4','#4363d8','#000000')
 
-readLamp<-function(rawFile,meltFile,meltStart=121,timePerCyle=30,skipCycles=0,skip=21,sep=',',correctCycles=FALSE,rawDataTab='Raw Data',meltRawTab='Melt Curve Raw Data'){
-  if(grepl('.xlsx?$',rawFile)){
-    melt<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
-    colnames(melt)<-sub('[- ]','.',colnames(melt))
-  }else{
-    melt<-read.csv(rawFile,skip=skip,sep=sep,stringsAsFactors=FALSE)
-  }
-  if(is.numeric(meltFile)|is.null(meltFile)){
-    ts<-meltFile
-  }else{
-    if(grepl('.xlsx?$',meltFile)){
-      if(meltRawTab %in% readxl::excel_sheets(meltFile)) tmp<-as.data.frame(readxl::read_excel(meltFile,meltRawTab,skip=skip))
-      else tmp<-data.frame('Temperature'=NA)[0,,drop=FALSE]
-    }else{
-      tmp<-read.csv(meltFile,stringsAsFactors=FALSE,skip=skip)
-    }
-    colnames(tmp)<-sub('[ -]','.',colnames(tmp))
-    ts<-unique(tmp[tmp$Well.Position=='A1','Temperature'])
-  }
-  mCols<-colnames(melt)[grep('x[0-9]+\\.m',colnames(melt))]
-  for(ii in mCols)melt[,ii]<-as.numeric(gsub(',','',melt[,ii]))
-  melt$col<-as.numeric(sub('[A-Z]','',melt$Well.Position))
-  melt$row<-trimws(sub('[0-9]+','',melt$Well.Position))
-  melt$rowNum<-sapply(melt$row,function(xx)which(LETTERS==xx))
-  melt$well<-trimws(melt$Well.Position)
-  melt$file<-rawFile
-  #assumes in correct order
-  if(correctCycles)melt$Cycle<-ave(melt$Cycle,melt$Well.Position,FUN=function(xx)1:length(xx))
-  melt$Cycle<-melt$Cycle-skipCycles
-  melt<-melt[melt$Cycle>0,]
-  colnames(melt)<-sub('^[Xx]([0-9])[._][mM]([0-9])','x\\1.m\\2',colnames(melt))
-  flNames<-c('x1.m1'='520nm','x2.m2'='558nm','x3.m3'='587nm','x4.m4'='623nm','x5.m5'='682nm','x6.m6'='711nm')
-  flNames<-flNames[names(flNames) %in% colnames(melt)]
-  for(ii in names(flNames))melt[,flNames[ii]]<-melt[,ii]
-  lamp<-melt[melt$Cycle<meltStart,]
-  lamp$time<-lamp$Cycle*timePerCyle
-  lamp$timeMin<-lamp$Cycle*timePerCyle/60
-  #hardcoded magic number 5 cycles
-  for(ii in names(flNames))lamp[,sprintf('%s - baseline',flNames[ii])]<-ave(lamp[,flNames[ii]],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
-  #max to make sure we don't get 1:0
-  meltCurve<-melt[melt$Cycle %in% (meltStart+1:max(1,length(ts))-1),]
-  meltCurve$temp<-ts[meltCurve$Cycle-meltStart+1]
-  if(length(ts)==0)meltCurve<-NULL
-  extra<-melt[melt$Cycle > meltStart+length(ts)-1,]
-  return(list(lamp=lamp,melt=meltCurve,extra=extra))
-}
-plotLamp<-function(lamp,rowStandardize=FALSE){
-  mCols<-colnames(lamp)[grep('x[0-9]+\\.m',colnames(lamp))]
-  mCol<-structure(dnar::rainbow.lab(length(mCols)),.Names=mCols)
-  showMelt<-!is.null(lamp)
-  par(mfrow=c(8,12))
-  for(jj in mCols){
-    for(ii in unique(lamp$well)){
-      if(rowStandardize)ylim<-range(lamp[lamp$row==lamp[lamp$well==ii,'row'],jj])
-      else ylim<-range(lamp[,jj])
-      thisDat<-lamp[lamp$well==ii,]
-      plot(1,1,type='n',main=sprintf('%s %s',ii,jj),ylim=ylim,xlim=range(thisDat$Cycle),xlab='"Cycle"',ylab='',las=1)
-      lines(thisDat[,'Cycle'],thisDat[,jj],col=mCol[jj],lwd=4)
-    }
-  }
-}
-plotSummary<-function(melt,xCol,xlab,fls,rowIds,colIds,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=c(-.16,-.24),ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',...){
-  tmp<-melt
-  tmp[,'PLOTCOL_XXX']<-rowIds[tmp[,plotCol]]
-  tmp[,'LINECOL_XXX']<-colIds[tmp[,lineCol]]
-  if(is.null(names(fls)))names(fls)<-1:length(fls)
-  if(is.null(names(rowIds)))names(rowIds)<-1:length(rowIds)
-  fls<-tapply(fls,rowIds[names(fls)],unique)
-  if(any(sapply(fls,length)!=1))stop('Ambiguous fls')
-  plotSummary2(tmp,xCol,xlab,fls,cols,showLegend,'PLOTCOL_XXX','LINECOL_XXX',legendInset,ncol,sameY,showMain,yScale,ylab,...)
-}
-plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=NULL,ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',legendArgs=list(),indicate=NULL,indicateYellow=NULL,mainExtra='',logXY='',ylims=NULL,lwd=2,plotPoints=NULL,addYFirst=FALSE,cex.lab=1,yMaxs=NULL,yScaleFirst=FALSE,extraCmds=NULL,...){
-  if(length(fls)==1)fls<-structure(rep(fls,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
-  if(length(mainExtra)==1)mainExtra<-structure(rep(mainExtra,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
-  plots<-unique(melt[,plotCol])
-  for(ii in plots){
-    fl<-fls[ii]
-    thisDat<-melt[melt[,plotCol]==ii,]
-    if(is.null(ylims)){
-      if(sameY)ylim<-c(min(melt[,fl]),max(c(melt[,fl],yMaxs[fl])))
-      else ylim<-range(thisDat[,fl])
-    }else{
-      ylim<-ylims
-    }
-    main<-sprintf('%s%s%s%s%s',trimws(ii),ifelse(addYFirst,'',' '),ifelse(addYFirst,'',fl),ifelse(mainExtra[ii]=='','',' '),mainExtra[ii])
-    if(addYFirst&ii==plots[1])lab<-sprintf("%s RLU (x1000)",fl)
-    else lab<-ylab
-    plot(1,1,type='n',ylim=ylim/yScale,log=logXY,xlim=range(na.omit(thisDat[,xCol])),xlab='',ylab='',las=1,mgp=c(3,.8,0),yaxt=ifelse(yScaleFirst&ii!=plots[1],'n','s'),...)
-    title(ifelse(showMain,main,''),line=0.1-nchar(gsub('[^\n]+','',main)),cex.main=cex.lab)
-    title(xlab=xlab,mgp=c(2.4,1,0),cex.lab=cex.lab)
-    title(ylab=lab,mgp=c(3.1,1,0),xpd=NA,cex.lab=cex.lab)
-    for(kk in unique(thisDat[,lineCol])){
-      thisCol<-thisDat[thisDat[,lineCol]==kk,]
-      for(ll in unique(thisCol$Well))lines(thisCol[thisCol$Well==ll,xCol],thisCol[thisCol$Well==ll,fl]/yScale,col=cols[kk],lwd=lwd)
-    }
-    if(!is.null(plotPoints)){
-      thisPoints<-plotPoints[plotPoints[,plotCol]==ii,]
-      for(kk in unique(thisDat[,lineCol])){
-        thisPoint<-thisPoints[thisPoints[,lineCol]==kk,]
-        for(ll in unique(thisPoints$Well))points(thisPoint[thisPoint$Well==ll,xCol],thisPoint[thisPoint$Well==ll,fl]/yScale,col=cols[kk],lwd=lwd)
-      }
-    }
-    if(ii %in% indicate){
-      box('figure',lwd=6,col=cols[kk])
-    }else if(ii %in% indicateYellow){
-      box('figure',lwd=4,col='gold')
-    }
-    if(!is.null(extraCmds))sapply(extraCmds,function(xx)xx())
-  }
-  if(showLegend){
-    if(is.null(legendInset)){
-      #need fine adjustment option here?
-      do.call(legend,c(list(grconvertX(.99,from='ndc'),grconvertY(0.01,from='ndc'),names(cols),lwd=2,col=cols,inset=legendInset,xpd=NA,ncol=ncol,xjust=1,yjust=0),legendArgs))
-    }else{
-      #for backwards compatibility
-      do.call(legend,c(list('topleft',names(cols),lwd=2,col=cols,inset=legendInset,xpd=NA,ncol=ncol),legendArgs))
-    }
-  }
-}
 
 
-checkAmps<-function(lamp,melt,fl,minAmp=2500,meltTempNum=35,meltTempNum2=length(unique(melt$temp)),minFoldIncrease=3,minMeltDiff=.5,baselineTime=1,isTemp=FALSE){
-  last<-dnar::withAs(xx=lamp[order(lamp$Well,lamp$time),],tapply(xx[,fl],list(xx$Well),function(zz)tail(zz,1)))
-  first<-dnar::withAs(xx=lamp[order(lamp$Well,lamp$time),],tapply(xx[,fl],list(xx$Well),function(zz)max(1000,head(zz,1))))
-  if(isTemp){
-    melt$t1<-ave(melt$temp,melt$Well,FUN=function(xx)xx[which.min(abs(xx-meltTempNum))])
-    melt$t2<-ave(melt$temp,melt$Well,FUN=function(xx)xx[which.min(abs(xx-meltTempNum2))])
-    fl1<-tapply(melt[melt$temp==melt$t1,fl],melt[melt$temp==melt$t1,'Well'],c)
-    fl2<-tapply(melt[melt$temp==melt$t2,fl],melt[melt$temp==melt$t1,'Well'],c)
-  }else{
-    fl1<-dnar::withAs(xx=melt[order(melt$Well,melt$temp),],tapply(xx[,fl],xx$Well,function(zz)zz[meltTempNum]))
-    fl2<-dnar::withAs(xx=melt[order(melt$Well,melt$temp),],tapply(xx[,fl],xx$Well,function(zz)zz[meltTempNum2]))
-  }
-  curveMelt<-fl1>pmax(minAmp,fl2*minMeltDiff)
-  lampAmp<-dnar::withAs(xx=lamp[order(lamp$Well,lamp$time),],tapply(xx[,fl],list(xx$Well),function(zz)tail(zz,1)>max(minAmp,zz[baselineTime]*minFoldIncrease)))
-  out<-data.frame('amp'=lampAmp,'melt'=curveMelt[names(lampAmp)],'last'=last[names(lampAmp)],'first'=first[names(lampAmp)],row.names=names(lampAmp))
-  out$isGood<-out$melt&out$amp
-  out
-}
 
 
 findWellLine<-function(xls) suppressMessages(which(as.data.frame(readxl::read_excel(xls,'Raw Data',n_max=50))[,1]=='Well'))
@@ -369,6 +232,19 @@ findSamples<-function(samples,files,outFile=NULL){
   return(matches)
 }
 
+
+readStepOne<-function(rawFile,rawDataTab='Raw Data',skip=7,cycles=120,minPerCycle=.5){
+  dat<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
+  dat$col<-as.numeric(sub('[A-Z]','',dat$Well))
+  dat$row<-trimws(sub('[0-9]+','',dat$Well))
+  dat$rowNum<-sapply(dat$row,function(xx)which(LETTERS==xx))
+  dat$well<-dat$Well
+  lamp<-dat[dat$Cycle<=cycles,]
+  lamp$timeMin<-lamp$Cycle*minPerCycle
+  for(ii in c('BLUE','GREEN','YELLOW','RED'))lamp[,sprintf('%s - baseline',ii)]<-ave(lamp[,ii],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
+  melt<-dat[dat$Cycle>cycles,]
+  return(list('lamp'=lamp,'melt'=melt))
+}
 
 calcCt<-function(fluor,well,meta=NULL,threshold=100000,timePerStep=.5,digits=1,maxTime=60){
   ct<-tapply(fluor,well,function(xx)suppressWarnings(approx(xx,1:length(xx),threshold)$y)*timePerStep)
