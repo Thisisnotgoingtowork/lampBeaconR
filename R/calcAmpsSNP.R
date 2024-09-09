@@ -1,7 +1,7 @@
 #' Read lamp data
 #' 
 #' Reading a lamp data and return a list with calculated amplitude and position
-#' @param lamp a list that contain lamp data
+#' @param lamp a lamp list that contain lamp data
 #' @return a list with calculated amplitude an position
 #' @export
 #' 
