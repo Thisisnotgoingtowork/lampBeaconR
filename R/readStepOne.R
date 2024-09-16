@@ -24,3 +24,4 @@ readStepOne<-function(rawFile,rawDataTab='Raw Data',skip=7,cycles=120,minPerCycl
   melt<-dat[dat$Cycle>cycles,]
   return(list('lamp'=lamp,'melt'=melt))
 }
+
