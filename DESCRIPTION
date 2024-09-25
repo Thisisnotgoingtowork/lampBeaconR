@@ -1,12 +1,14 @@
-Package: functions
-Type: Package
-Title: What the Package Does (Title Case)
+Package: lampr
+Maintainer: Scott Sherrill-Mix <ssm@msu.edu>
+License: GPL (>=2) | file LICENSE
+Title: Functions to work with Quantstudio qPCR and LAMP data
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Scott Sherrill-Mix [aut, cre], Wendy Jiang [aut]
+Description: Functions for reading data from the output from Quantstudio 3, Quantstudio 5, Quantstudio 6,  Quantstudio 7 and StepOne qPCR machines and plotting/processing data from LAMP or qPCR experiments.
+Depends:
+    R (>= 3.0.0)
+Imports:
+   readxl 
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.3
+oxygenNote: 7.3.2
