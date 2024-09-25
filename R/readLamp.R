@@ -9,7 +9,7 @@
 #' @param skipCycles a number indicate where to read the cycles
 #' @param skip description
 #' @param sep a string indicate how to separate the data from
-#' @param correctCycle a bool value, that set to tell if the file is in right version
+#' @param correctCycles a bool value, that set to tell if the file is in right version
 #' @param rawDataTab the name of the tab Excel sheet
 #' @param meltRawTab the name of the tab Excel sheet of melt curve
 #' @return a list of lamp and melt amplitude table
@@ -23,7 +23,7 @@ readLamp<-function(rawFile,meltFile=rawFile,meltStart=121,timePerCyle=30,skipCyc
     melt<-as.data.frame(readxl::read_excel(rawFile,rawDataTab,skip=skip))
     colnames(melt)<-sub('[- ]','.',colnames(melt))
   }else{
-    melt<-read.csv(rawFile,skip=skip,sep=sep,stringsAsFactors=FALSE)
+    melt<-utils::read.csv(rawFile,skip=skip,sep=sep,stringsAsFactors=FALSE)
   }
   if(is.numeric(meltFile)|is.null(meltFile)){
     ts<-meltFile
@@ -32,7 +32,7 @@ readLamp<-function(rawFile,meltFile=rawFile,meltStart=121,timePerCyle=30,skipCyc
       if(meltRawTab %in% readxl::excel_sheets(meltFile)) tmp<-as.data.frame(readxl::read_excel(meltFile,meltRawTab,skip=skip))
       else tmp<-data.frame('Temperature'=NA)[0,,drop=FALSE]
     }else{
-      tmp<-read.csv(meltFile,stringsAsFactors=FALSE,skip=skip)
+      tmp<-utils::read.csv(meltFile,stringsAsFactors=FALSE,skip=skip)
     }
     colnames(tmp)<-sub('[ -]','.',colnames(tmp))
     ts<-unique(tmp[tmp$Well.Position=='A1','Temperature'])
@@ -45,7 +45,7 @@ readLamp<-function(rawFile,meltFile=rawFile,meltStart=121,timePerCyle=30,skipCyc
   melt$well<-trimws(melt$Well.Position)
   melt$file<-rawFile
   #assumes in correct order
-  if(correctCycles)melt$Cycle<-ave(melt$Cycle,melt$Well.Position,FUN=function(xx)1:length(xx))
+  if(correctCycles)melt$Cycle<-stats::ave(melt$Cycle,melt$Well.Position,FUN=function(xx)1:length(xx))
   melt$Cycle<-melt$Cycle-skipCycles
   melt<-melt[melt$Cycle>0,]
   colnames(melt)<-sub('^[Xx]([0-9])[._][mM]([0-9])','x\\1.m\\2',colnames(melt))
@@ -56,7 +56,7 @@ readLamp<-function(rawFile,meltFile=rawFile,meltStart=121,timePerCyle=30,skipCyc
   lamp$time<-lamp$Cycle*timePerCyle
   lamp$timeMin<-lamp$Cycle*timePerCyle/60
   #hardcoded magic number 5 cycles
-  for(ii in names(flNames))lamp[,sprintf('%s - baseline',flNames[ii])]<-ave(lamp[,flNames[ii]],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
+  for(ii in names(flNames))lamp[,sprintf('%s - baseline',flNames[ii])]<-stats::ave(lamp[,flNames[ii]],lamp$well,FUN=function(xx)xx-mean(xx[1:5]))
   #max to make sure we don't get 1:0
   meltCurve<-melt[melt$Cycle %in% (meltStart+1:max(1,length(ts))-1),]
   meltCurve$temp<-ts[meltCurve$Cycle-meltStart+1]

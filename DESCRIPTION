@@ -1,14 +1,20 @@
 Package: lampr
 Maintainer: Scott Sherrill-Mix <ssm@msu.edu>
-License: GPL (>=2) | file LICENSE
+License: GPL (>=2)
 Title: Functions to work with Quantstudio qPCR and LAMP data
 Version: 0.1.0
 Author: Scott Sherrill-Mix [aut, cre], Wendy Jiang [aut]
 Description: Functions for reading data from the output from Quantstudio 3, Quantstudio 5, Quantstudio 6,  Quantstudio 7 and StepOne qPCR machines and plotting/processing data from LAMP or qPCR experiments.
+Suggests:
+    testthat,
+    knitr,
 Depends:
     R (>= 3.0.0)
 Imports:
-   readxl 
+   readxl,
+   utils,
+   stats
 Encoding: UTF-8
 LazyData: true
 oxygenNote: 7.3.2
+RoxygenNote: 7.3.2
