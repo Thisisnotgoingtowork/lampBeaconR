@@ -17,9 +17,10 @@ colSelection <- function(){
   inter = max(inter, 1)
   #uncomment line below for troubleshot
   #print(seq(startFrom,endAt, inter))
-  return(seq(startFrom, endAt, inter))
+  seqCol <- seq(startFrom, endAt, inter)
+  num = (endAt - startFrom)/inter
+  return(list(seqCol = seqCol, num = num))
 }
-
 
 #' 
 #' No parameter needed
@@ -40,5 +41,7 @@ rowSelection <- function(){
   interR = max(interR, 1)
   #uncomment line below for troubleshot
   #print(seq(startFromr,endAtr, interR))
-  return(seq(startFromr, endAtr, interR))
+  seqRow <- seq(startFromr, endAtr, interR)  
+  num = (endAtr - startFrom)/interR
+  return(list(seqRow = seqRow, num = num))
 }
