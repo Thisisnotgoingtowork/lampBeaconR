@@ -7,7 +7,7 @@
 #' 
 
 
-colSelection <- function(){
+colSelection <- function(numC = 12){
   startFrom <- readline(prompt = "Selection the col want to start with (must be integer): ")
   startFrom <- as.integer(startFrom)
   endAt <- readline(prompt = "End the col reading at (must be integer and bigger or equal than starting col): ")
@@ -17,8 +17,18 @@ colSelection <- function(){
   inter = max(inter, 1)
   #uncomment line below for troubleshot
   #print(seq(startFrom,endAt, inter))
+  while(startFrom < 1 || endAt > numC){
+    cat("Error number, try again.\n")
+    startFrom <- readline(prompt = "Selection the col want to start with (must be integer): ")
+    startFrom <- as.integer(startFrom)
+    endAt <- readline(prompt = "End the col reading at (must be integer and bigger or equal than starting col): ")
+    endAt <- as.integer(endAt)
+    inter <- readline(prompt = "Interval? (enter 1 if no need for interval)")
+    inter <- as.integer(inter)
+    inter = max(inter, 1)
+  }
   seqCol <- seq(startFrom, endAt, inter)
-  num = (endAt - startFrom)/inter
+  num = (endAt - startFrom + 1)/inter
   return(list(seqCol = seqCol, num = num))
 }
 
@@ -31,7 +41,7 @@ colSelection <- function(){
 #' 
 
 
-rowSelection <- function(){
+rowSelection <- function(numR = 8){
   startFromr <- readline(prompt = "Selection the row want to start with (must be integer): ")
   startFromr <- as.integer(startFromr)
   endAtr <- readline(prompt = "End the row reading at (must be integer and bigger or equal than starting row): ")
@@ -40,8 +50,18 @@ rowSelection <- function(){
   interR <- as.integer(interR)
   interR = max(interR, 1)
   #uncomment line below for troubleshot
-  #print(seq(startFromr,endAtr, interR))
+  print(seq(startFromr,endAtr, interR))
+  while(startFromr < 1 || endAtr > numR){
+    cat("Error number, try again.\n")
+    startFromr <- readline(prompt = "Selection the col want to start with (must be integer): ")
+    startFromr <- as.integer(startFromr)
+    endAtr <- readline(prompt = "End the col reading at (must be integer and bigger or equal than starting col): ")
+    endAtr <- as.integer(endAtr)
+    interR <- readline(prompt = "Interval? (enter 1 if no need for interval)")
+    interR <- as.integer(interR)
+    interR = max(interR, 1)
+  }
   seqRow <- seq(startFromr, endAtr, interR)  
-  num = (endAtr - startFrom)/interR
+  num = (endAtr - startFromr)/interR
   return(list(seqRow = seqRow, num = num))
 }

@@ -1,4 +1,8 @@
 #' 
+#' read the 
+#' 
+#' 
+#' 
 #' 
 lampDatapdf <- function(fileName,data, seqCol = seq(1, 12, 1), selRow = seq (1,8,1 )) {
   print(nrow(data$lamp))

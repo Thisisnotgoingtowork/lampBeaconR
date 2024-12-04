@@ -2,7 +2,7 @@
 #'
 #' plot the data in the correct form and be able to use in later
 #'
-#' @param melt description
+#' @param lamp description
 #' @param xCol description
 #' @param xlab description
 #' @param fls description
@@ -33,7 +33,17 @@
 #'
 
 
-plotSummary<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=NULL,ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',legendArgs=list(),indicate=NULL,indicateYellow=NULL,mainExtra='',logXY='',ylims=NULL,lwd=2,plotPoints=NULL,addYFirst=FALSE,cex.lab=1,yMaxs=NULL,yScaleFirst=FALSE,extraCmds=NULL,...){
+plotSummary<-function(melt,xCol,xlab,fls,rowIds,colIds,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=c(-.16,-.24),ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',...){
+  tmp<-melt
+  tmp[,'PLOTCOL_XXX']<-rowIds[tmp[,plotCol]]
+  tmp[,'LINECOL_XXX']<-colIds[tmp[,lineCol]]
+  if(is.null(names(fls)))names(fls)<-1:length(fls)
+  if(is.null(names(rowIds)))names(rowIds)<-1:length(rowIds)
+  fls<-tapply(fls,rowIds[names(fls)],unique)
+  if(any(sapply(fls,length)!=1))stop('Ambiguous fls')
+  plotSummary2(tmp,xCol,xlab,fls,cols,showLegend,'PLOTCOL_XXX','LINECOL_XXX',legendInset,ncol,sameY,showMain,yScale,ylab,...)
+}
+plotSummary2<-function(melt,xCol,xlab,fls,cols,showLegend=TRUE,plotCol='row',lineCol='col',legendInset=NULL,ncol=2,sameY=FALSE,showMain=TRUE,yScale=1000,ylab='',legendArgs=list(),indicate=NULL,indicateYellow=NULL,mainExtra='',logXY='',ylims=NULL,lwd=2,plotPoints=NULL,addYFirst=FALSE,cex.lab=1,yMaxs=NULL,yScaleFirst=FALSE,extraCmds=NULL,...){
   if(length(fls)==1)fls<-structure(rep(fls,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
   if(length(mainExtra)==1)mainExtra<-structure(rep(mainExtra,length(unique(melt[,plotCol]))),.Names=unique(melt[,plotCol]))
   plots<-unique(melt[,plotCol])
