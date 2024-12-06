@@ -2,12 +2,19 @@
 #' No parameter needed
 #' 
 #' With no parameter, the function will promote the user to input the col information
-#' @return a squeal
+#' 
+#' @return a squeal that tells the range of the column
 #' @export
+#' @example 
+#' tCol <- totalCol()
+#' result <- colSelection(tCol)
+#' selCol <- result$seqCol
+#' numC <- result$num
 #' 
 
 
 colSelection <- function(numC = 12){
+  print(numC)
   startFrom <- readline(prompt = "Selection the col want to start with (must be integer): ")
   startFrom <- as.integer(startFrom)
   endAt <- readline(prompt = "End the col reading at (must be integer and bigger or equal than starting col): ")
@@ -36,8 +43,13 @@ colSelection <- function(numC = 12){
 #' No parameter needed
 #' 
 #' With no parameter, the function will promote the user to input the row information
-#' @return a squeal
+#' @return a squeal that tells the range of the rows
 #' @export
+#' @example 
+#' tRow <- totalRow()
+#' result <- rowSelection(tRow)
+#' selrow <- result$seqRow
+#' numC <- result$num
 #' 
 
 
@@ -50,7 +62,7 @@ rowSelection <- function(numR = 8){
   interR <- as.integer(interR)
   interR = max(interR, 1)
   #uncomment line below for troubleshot
-  print(seq(startFromr,endAtr, interR))
+  #print(seq(startFromr,endAtr, interR))
   while(startFromr < 1 || endAtr > numR){
     cat("Error number, try again.\n")
     startFromr <- readline(prompt = "Selection the col want to start with (must be integer): ")
