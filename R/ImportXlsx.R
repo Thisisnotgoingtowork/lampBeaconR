@@ -1,4 +1,8 @@
-
+#'
+#' Check if the file is correct xlsx file
+#' @return the corrected file name
+#' @export
+#'
 
 
 ImportXlsx<-function(){

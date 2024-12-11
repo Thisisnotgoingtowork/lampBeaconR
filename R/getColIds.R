@@ -1,4 +1,5 @@
-
+#' 
+#' 
 
 getRepeat<-function(IDs){
   needR<-readline(prompt = "Enter 1 to repeat by sequence(Ex: AA, BB, AA, BB); 2 by sample(Ex: AA, AA, BB, BB): ")

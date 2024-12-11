@@ -2,9 +2,8 @@
 #' A xlsx file containing lamp cycle raw data
 #' 
 #' This is an overall funtion that call out others to output the pdf files and a log file (recording the )
-#' @return a squeal that tells the range of the column
+#' @param file1 the file that contain raw data for the lamp 
 #' @export
-#' @example 
 #' 
 #' 
 

@@ -1,4 +1,13 @@
-
+#' using the stored lamp data, 
+#' 
+#' having the lamp data and produce a graph pdf
+#' @param filename the name of the file to output
+#' @param seqCol The list of numbers that indicate the column index
+#' @param seqRow the list of numbers that indicate the rows index
+#' @param colIds1 the list of strings that have the ids of each col
+#' @param colIds2 the second list of string that have ids of each col
+#' @export
+#' 
 
 lampDataGraphpdf<-function(filename = "demo.pdf", seqCol, seqRow, colIds1, colIds2 = ''){
 data$lamp <- data$lamp[data$lamp$col %in% seqCol & data$lamp$rowNum %in% selRow ,]
